@@ -2,6 +2,12 @@ import type { Request, Response } from 'express';
 import Task from '../models/Task';
 
 export class TaskController {
+  // Helper method for handling errors
+  private static handleError(res: Response, error: any) {
+    console.error(error); // Log the error for debugging purposes
+    res.status(500).json({ error: 'Hubo un error' });
+  }
+
   static createTask = async (req: Request, res: Response) => {
     try {
       const task = new Task(req.body);
@@ -10,18 +16,16 @@ export class TaskController {
       await Promise.allSettled([task.save(), req.project.save()]);
       res.send('Tarea creada con éxito');
     } catch (error) {
-      res.status(500).json({ error: 'Hubo un error' });
+      this.handleError(res, error);
     }
   };
 
   static getProjectTasks = async (req: Request, res: Response) => {
     try {
-      const tasks = await Task.find({ project: req.project._id }).populate(
-        'project'
-      );
+      const tasks = await Task.find({ project: req.project._id }).populate('project');
       res.json(tasks);
     } catch (error) {
-      res.status(500).json({ error: 'Hubo un error' });
+      this.handleError(res, error);
     }
   };
 
@@ -29,44 +33,37 @@ export class TaskController {
     try {
       res.json(req.task);
     } catch (error) {
-      res.status(500).json({ error: 'Hubo un error' });
+      this.handleError(res, error);
     }
   };
 
   static updateTask = async (req: Request, res: Response) => {
     try {
-      req.task.name = req.body.name;
-      req.task.description = req.body.description;
+      Object.assign(req.task, req.body); // More flexible and cleaner way to update properties
       await req.task.save();
-
       res.send('Tarea actualizada con éxito');
     } catch (error) {
-      res.status(500).json({ error: 'Hubo un error' });
+      this.handleError(res, error);
     }
   };
 
   static deleteTask = async (req: Request, res: Response) => {
     try {
-      req.project.tasks = req.project.tasks.filter(
-        (task) => task.toString() !== req.task.id.toString()
-      );
-
+      req.project.tasks = req.project.tasks.filter(task => task.toString() !== req.task.id.toString());
       await Promise.allSettled([req.task.deleteOne(), req.project.save()]);
-
       res.send('Tarea eliminada con éxito');
     } catch (error) {
-      res.status(500).json({ error: 'Hubo un error' });
+      this.handleError(res, error);
     }
   };
 
   static updateTaskStatus = async (req: Request, res: Response) => {
     try {
-      const { status } = req.body;
-      req.task.status = status;
+      req.task.status = req.body.status;
       await req.task.save();
       res.send('Estado de la tarea actualizado con éxito');
     } catch (error) {
-      res.status(500).json({ error: 'Hubo un error' });
+      this.handleError(res, error);
     }
   };
 }
