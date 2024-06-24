@@ -3,17 +3,27 @@ import bcrypt from 'bcrypt';
 import User from '../models/User';
 
 export class AuthController {
-  static createAccount= async (req: Request, res: Response) => {
-    const { userPassword } = req.body;
-    const user = new User(req.body);
+  private static async hashPassword(password: string): Promise<string> {
+    const salt = await bcrypt.genSalt(10);
+    return bcrypt.hash(password, salt);
+  }
 
+  private static async findUserById(id: string) {
+    const user = await User.findById(id);
+    if (!user) {
+      throw new Error('Usuario no encontrado');
+    }
+    return user;
+  }
+
+  static createAccount = async (req: Request, res: Response) => {
     try {
-      const salt = await bcrypt.genSalt(10);
-      user.userPassword = await bcrypt.hash(userPassword, salt);
+      const user = new User(req.body);
+      user.userPassword = await this.hashPassword(req.body.userPassword);
       await user.save();
-      res.send('Cuenta creado correctamente, revisa tu email para confirmarla');
+      res.send('Cuenta creada correctamente, revisa tu email para confirmarla');
     } catch (error) {
-      res.status(500).json({error:'Hubo un error'})
+      res.status(500).json({ error: 'Hubo un error' });
     }
   };
 
@@ -22,60 +32,39 @@ export class AuthController {
       const users = await User.find({});
       res.json(users);
     } catch (error) {
-      console.log(error);
+      res.status(500).json({ error: 'Hubo un error' });
     }
   };
 
   static getUserById = async (req: Request, res: Response) => {
-    const { id } = req.params;
     try {
-      const user = await User.findById(id).populate('tasks');
-
-      if (!user) {
-        const error = new Error('Usuario no encontrado');
-        return res.status(404).json({ error: error.message });
-      }
+      const user = await this.findUserById(req.params.id);
       res.json(user);
     } catch (error) {
-      console.log(error);
+      res.status(404).json({ error: error.message });
     }
   };
 
   static updateUser = async (req: Request, res: Response) => {
-    const { id } = req.params;
     try {
-      const user = await User.findById(id);
-
-      if (!user) {
-        const error = new Error('Usuario no encontrado');
-        return res.status(404).json({ error: error.message });
+      const user = await this.findUserById(req.params.id);
+      Object.assign(user, req.body);
+      if (req.body.userPassword) {
+        user.userPassword = await this.hashPassword(req.body.userPassword);
       }
-
-      user.userName = req.body.userName;
-      user.userEmail = req.body.userEmail;
-      user.userPassword = req.body.usePassword;
       await user.save();
       res.send('Usuario actualizado correctamente!');
     } catch (error) {
-      console.log(error);
+      res.status(404).json({ error: error.message });
     }
   };
 
   static deleteUser = async (req: Request, res: Response) => {
-    const { id } = req.params;
     try {
-      const user = await User.findById(id);
-
-      if (!user) {
-        const error = new Error('Usuario no encontrado');
-        return res.status(404).json({ error: error.message });
-      }
-
-      await user.deleteOne();
-
+      await User.deleteOne({ _id: req.params.id });
       res.send('Usuario eliminado correctamente!');
     } catch (error) {
-      console.log(error);
+      res.status(404).json({ error: 'Usuario no encontrado' });
     }
   };
 }
