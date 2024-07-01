@@ -1,29 +1,28 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IUser extends Document {
-  userEmail: string;
-  userPassword: string;
-  userName: string;
+  email: string;
+  password: string;
+  name: string;
   confirmed: boolean;
 }
 
 const UserSchema = new Schema(
   {
-    userEmail: {
+    email: {
       type: String,
       required: true,
       lowercase: true,
       trim: true,
       unique: true,
     },
-    userPassword: {
+    password: {
       type: String,
       required: true,
     },
-    userName: {
+    name: {
       type: String,
       required: true,
-      trim: true,
     },
     confirmed: {
       type: Boolean,
